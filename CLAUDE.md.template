@@ -1,0 +1,31 @@
+# CLAUDE.md
+
+## Code Analysis Rules
+
+This project uses a three-layer analysis system to minimize token usage. Always follow this decision chain:
+
+**1. graphify** — structural questions (where is X defined, what calls Y, relationships)
+→ FREE. Always try this first.
+```bash
+graphify query "<question>"
+graphify explain "<concept>"
+graphify path "<A>" "<B>"
+```
+
+**2. DeepSeek delegation** — semantic analysis in large files (>400 lines)
+→ CHEAP. Use when graphify doesn't answer the question.
+```bash
+python tools/ask-deepseek.py "question" "path/to/file.ts"
+python tools/ask-deepseek.py "question" file1.ts file2.ts
+python tools/ask-deepseek.py "any errors?" --stdin < changes.diff
+python tools/ask-deepseek.py "hard problem" file.ts --reasoner
+```
+
+**3. Direct source read** — only the narrow section you are about to edit
+→ Read it yourself after graphify/DeepSeek told you exactly where to look.
+
+**Rules:**
+- Small file (<150 lines) → read directly, not worth delegating
+- "Where is X defined?" → graphify only, never grep first
+- About to edit a specific function → read only those lines
+- Never apply an edit based solely on DeepSeek output — verify the line range in source first
