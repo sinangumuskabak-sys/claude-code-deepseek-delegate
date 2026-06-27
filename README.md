@@ -43,14 +43,19 @@ Combined with [graphify](https://github.com/graphify-dev/graphify) for free stru
 ## Quickstart
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-code-deepseek-delegate
+# 1. Go into your existing project
 cd your-project
-bash /path/to/claude-code-deepseek-delegate/setup.sh
+
+# 2. Clone this repo somewhere on your machine
+git clone https://github.com/sinangumuskabak-sys/claude-code-deepseek-delegate
+
+# 3. Run setup from inside your project
+bash ../claude-code-deepseek-delegate/setup.sh
 ```
 
 `setup.sh` will:
 - Install `requests` and `graphify`
-- Run `graphify init .` to build the knowledge graph
+- Run `graphify init .` to build the knowledge graph for your project
 - Ask you for your DeepSeek API key and save it to `.env`
 - Copy `CLAUDE.md.template` to `CLAUDE.md`
 
