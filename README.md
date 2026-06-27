@@ -54,7 +54,7 @@ bash ../claude-code-deepseek-delegate/setup.sh
 ```
 
 `setup.sh` will:
-- Install `requests` and `graphify`
+- Install `requests` and `graphifyy`
 - Run `graphify init .` to build the knowledge graph for your project
 - Ask you for your DeepSeek API key and save it to `.env`
 - Copy `CLAUDE.md.template` to `CLAUDE.md`
@@ -125,6 +125,6 @@ The decision chain rules in `CLAUDE.md.template` can also be added to the system
 ## Requirements
 
 - Python 3.8+
-- `pip install requests graphify`
+- `pip install requests graphifyy`
 - DeepSeek API key (free tier available)
 - Claude Code (for the enforcement hooks)

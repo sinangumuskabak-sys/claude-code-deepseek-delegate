@@ -6,7 +6,7 @@ echo ""
 
 # 1. Dependencies
 echo "[1/4] Installing Python dependencies..."
-pip install requests graphify --quiet
+pip install requests graphifyy --quiet
 echo "      Done."
 
 # 2. graphify init
