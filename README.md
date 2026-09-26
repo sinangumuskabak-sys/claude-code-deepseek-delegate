@@ -87,6 +87,22 @@ python tools/ask-deepseek.py "Explain this state flow" store/myStore.ts --reason
 
 ---
 
+## Other providers (OpenRouter, etc.)
+
+Out of DeepSeek credit, or prefer another model? Any OpenAI-compatible `/chat/completions` API works. Add to `.env` (or the environment):
+
+```bash
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=sk-or-...
+LLM_MODEL=deepseek/deepseek-chat
+# optional, used by --reasoner:
+LLM_REASONER_MODEL=deepseek/deepseek-r1
+```
+
+Or per call: `--base-url URL --model NAME`. Without these settings the script uses DeepSeek (`DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`). On HTTP 402 (no credit left) it prints a hint instead of only the raw error.
+
+---
+
 ## Decision chain
 
 Always follow this order:

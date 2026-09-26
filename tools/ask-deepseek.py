@@ -12,12 +12,19 @@ USAGE:
   python tools/ask-deepseek.py "Hard analysis" file.ts --reasoner
 
 OPTIONS:
-  --model X     Model name (default: DEEPSEEK_MODEL from .env or "deepseek-chat")
+  --model X     Model name (default: LLM_MODEL / DEEPSEEK_MODEL or "deepseek-chat")
+  --base-url U  OpenAI-compatible API base URL (default: LLM_BASE_URL or DeepSeek)
   --stdin       Use stdin content as context (for diffs/logs)
   --max-kb N    Context size limit in KB (default 600)
   --reasoner    Use deepseek-reasoner (harder problems, slightly more expensive)
   --raw         Send question as-is without system prompt
   --timeout N   Request timeout in seconds (default 120)
+
+OTHER PROVIDERS (any OpenAI-compatible /chat/completions API), in env or .env:
+  LLM_BASE_URL=https://openrouter.ai/api/v1
+  LLM_API_KEY=sk-or-...
+  LLM_MODEL=deepseek/deepseek-chat
+  Without these, DEEPSEEK_API_KEY / DEEPSEEK_MODEL and api.deepseek.com are used.
 """
 
 from __future__ import annotations
@@ -36,7 +43,7 @@ if sys.platform == "win32":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-API_URL = "https://api.deepseek.com/chat/completions"
+DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-chat"
 
 SYSTEM_PROMPT = (
@@ -52,29 +59,20 @@ SYSTEM_PROMPT = (
 )
 
 
-def load_env_key() -> str:
-    key = os.environ.get("DEEPSEEK_API_KEY")
-    if key:
-        return key.strip()
+def load_setting(*names: str) -> str | None:
+    """First non-empty value among names (in order); each is looked up in env, then .env."""
+    values = {}
     env_file = PROJECT_ROOT / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
             line = line.strip()
-            if line.startswith("DEEPSEEK_API_KEY="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
-    return ""
-
-
-def load_env_model() -> str | None:
-    model = os.environ.get("DEEPSEEK_MODEL")
-    if model:
-        return model.strip()
-    env_file = PROJECT_ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
-            line = line.strip()
-            if line.startswith("DEEPSEEK_MODEL="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                values[k.strip()] = v.strip().strip('"').strip("'")
+    for name in names:
+        value = (os.environ.get(name) or "").strip() or values.get(name)
+        if value:
+            return value
     return None
 
 
@@ -123,6 +121,7 @@ def main():
     ap.add_argument("question", help="Question to ask")
     ap.add_argument("files", nargs="*", help="Files to include as context")
     ap.add_argument("--model", help="Model name")
+    ap.add_argument("--base-url", help="OpenAI-compatible API base URL")
     ap.add_argument("--reasoner", action="store_true", help="Use deepseek-reasoner")
     ap.add_argument("--stdin", action="store_true", help="Include stdin as context")
     ap.add_argument("--max-kb", type=int, default=600, help="Context size limit in KB")
@@ -130,14 +129,22 @@ def main():
     ap.add_argument("--timeout", type=int, default=120, help="Request timeout (seconds)")
     args = ap.parse_args()
 
-    key = load_env_key()
+    key = load_setting("LLM_API_KEY", "DEEPSEEK_API_KEY")
     if not key:
         print("ERROR: DEEPSEEK_API_KEY not found.\n"
               "Add to .env:  DEEPSEEK_API_KEY=sk-...\n"
-              "Get a key at: platform.deepseek.com", file=sys.stderr)
+              "Get a key at: platform.deepseek.com\n"
+              "(or use another provider: LLM_BASE_URL + LLM_API_KEY + LLM_MODEL)", file=sys.stderr)
         sys.exit(2)
 
-    model = args.model or ("deepseek-reasoner" if args.reasoner else (load_env_model() or DEFAULT_MODEL))
+    base_url = (args.base_url or load_setting("LLM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+    api_url = base_url + "/chat/completions"
+    if args.model:
+        model = args.model
+    elif args.reasoner:
+        model = load_setting("LLM_REASONER_MODEL") or "deepseek-reasoner"
+    else:
+        model = load_setting("LLM_MODEL", "DEEPSEEK_MODEL") or DEFAULT_MODEL
 
     stdin_text = None
     if args.stdin and not sys.stdin.isatty():
@@ -158,7 +165,7 @@ def main():
 
     try:
         resp = requests.post(
-            API_URL,
+            api_url,
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
             json={"model": model, "messages": messages, "stream": False, "temperature": 0.2},
             timeout=args.timeout,
@@ -168,7 +175,10 @@ def main():
         sys.exit(1)
 
     if resp.status_code != 200:
-        print(f"ERROR: DeepSeek API {resp.status_code}: {resp.text[:500]}", file=sys.stderr)
+        print(f"ERROR: API {resp.status_code} ({api_url}): {resp.text[:500]}", file=sys.stderr)
+        if resp.status_code == 402:
+            print("HINT: the account has no credit left. Top up, or point LLM_BASE_URL / "
+                  "LLM_API_KEY / LLM_MODEL at another OpenAI-compatible provider.", file=sys.stderr)
         sys.exit(1)
 
     data = resp.json()
@@ -184,7 +194,8 @@ def main():
     if usage:
         pt = usage.get("prompt_tokens", 0)
         ct = usage.get("completion_tokens", 0)
-        print(f"\n[deepseek] model={model} | in={pt} out={ct} tokens | "
+        host = base_url.split("//")[-1].split("/")[0]
+        print(f"\n[{host}] model={model} | in={pt} out={ct} tokens | "
               f"context: {', '.join(used) if used else 'none'}", file=sys.stderr)
 
 
