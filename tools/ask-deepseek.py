@@ -20,6 +20,8 @@ OPTIONS:
   --timeout N   Request timeout in seconds (default 120)
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import json
@@ -64,6 +66,9 @@ def load_env_key() -> str:
 
 
 def load_env_model() -> str | None:
+    model = os.environ.get("DEEPSEEK_MODEL")
+    if model:
+        return model.strip()
     env_file = PROJECT_ROOT / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -129,7 +134,7 @@ def main():
     if not key:
         print("ERROR: DEEPSEEK_API_KEY not found.\n"
               "Add to .env:  DEEPSEEK_API_KEY=sk-...\n"
-              "Get a free key at: platform.deepseek.com", file=sys.stderr)
+              "Get a key at: platform.deepseek.com", file=sys.stderr)
         sys.exit(2)
 
     model = args.model or ("deepseek-reasoner" if args.reasoner else (load_env_model() or DEFAULT_MODEL))

@@ -30,7 +30,7 @@ This repo gives you two things:
 
 2. **Claude Code enforcement hooks** (`.claude/settings.json`) — intercept grep and file-read tool calls, reminding Claude to check the knowledge graph first before loading raw files.
 
-Combined with [graphify](https://github.com/graphify-dev/graphify) for free structural lookups, the result:
+Combined with [graphify](https://github.com/Graphify-Labs/graphify) for free structural lookups, the result:
 
 | Action | Before | After |
 |---|---|---|
@@ -55,11 +55,12 @@ bash ../claude-code-deepseek-delegate/setup.sh
 
 `setup.sh` will:
 - Install `requests` and `graphifyy`
-- Run `graphify init .` to build the knowledge graph for your project
-- Ask you for your DeepSeek API key and save it to `.env`
+- Run `graphify update .` to build the knowledge graph for your project
+- Copy `tools/ask-deepseek.py` and `.claude/settings.json` (hooks) into your project
+- Ask you for your DeepSeek API key, save it to `.env` and add `.env` to `.gitignore`
 - Copy `CLAUDE.md.template` to `CLAUDE.md`
 
-Get a free DeepSeek API key at [platform.deepseek.com](https://platform.deepseek.com).
+Get a DeepSeek API key at [platform.deepseek.com](https://platform.deepseek.com).
 
 ---
 
@@ -124,7 +125,7 @@ The decision chain rules in `CLAUDE.md.template` can also be added to the system
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.8+ (tested on 3.12)
 - `pip install requests graphifyy`
-- DeepSeek API key (free tier available)
+- DeepSeek API key (pay-as-you-go)
 - Claude Code (for the enforcement hooks)
